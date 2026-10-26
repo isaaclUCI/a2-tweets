@@ -10,29 +10,63 @@ class Tweet {
 	//returns either 'live_event', 'achievement', 'completed_event', or 'miscellaneous'
     get source():string {
         //TODO: identify whether the source is a live event, an achievement, a completed event, or miscellaneous.
-        return "unknown";
+        // Normalize capitalization and spacing of the text before checking for keywords.
+        const text = this.text.trim().toLowerCase();
+
+        // Completed activity: "Just completed a 5.00 km run with @Runkeeper! Check it out: http://rnkpr.com/a1b2c3"
+        if (text.startsWith('just completed ') || text.startsWith('just posted ')){
+            return "completed_event";
+        }
+
+        // Live activity: " Watch my live activity on @Runkeeper! http://rnkpr.com/a1b2c3"
+        if (text.startsWith('watch my ') && text.includes('runkeeper live')){
+            return "live_event";
+        }
+
+        // personal records and goals: "I just set a goal"
+        if (text.startsWith('achieved a new personal record') || text.startsWith('i just set a goal')){
+            return "achievement";
+        }
+
+        // If none of the above conditions are met, return 'miscellaneous'
+        return "miscellaneous";
     }
 
     //returns a boolean, whether the text includes any content written by the person tweeting.
     get written():boolean {
         //TODO: identify whether the tweet is written
-        return false;
+        // Removes the standard RunKeeper text patterns from the tweet to isolate any personal content.
+        return this.getPersonalText().length > 0;
     }
 
     get writtenText():string {
         if(!this.written) {
             return "";
         }
-        //TODO: parse the written text from the tweet
-        return "";
-    }
 
-    get activityType():string {
-        if (this.source != 'completed_event') {
+        return this.getPersonalText();
+    }
+     
+    get activityType(): string {
+        if (this.source != "completed_event") {
             return "unknown";
         }
-        //TODO: parse the activity type from the text of the tweet
-        return "";
+
+        let words = this.text.trim().toLowerCase().split(" ");
+
+        words = words.slice(3); // Remove the first three words: "Just completed a"
+
+        if (words[1] === "km" || words[1] === "mi") {
+            words = words.slice(2); // Remove the distance and unit
+        }
+        
+        let activity = words.join(" ");
+
+        activity = activity.split(" - ")[0];
+        activity = activity.split(" with ")[0];
+        activity = activity.split(" in ")[0];
+
+        return activity.trim();
     }
 
     get distance():number {
@@ -40,11 +74,65 @@ class Tweet {
             return 0;
         }
         //TODO: prase the distance from the text of the tweet
-        return 0;
+        // The distance is typically the fourth word in the tweet text, and the unit is the fifth word.
+        const words = this.text.trim().toLowerCase().split(" ");
+        const distance = Number(words[3]);
+        const unit = words[4];
+
+    
+        if ((unit !== "km" && unit !== "mi") || !Number.isFinite(distance)) {
+            return NaN; // Return NaN if the unit is not recognized or the distance is not a number
+        }
+
+        if (unit === "km") {
+            return distance / 1.60934; // Convert kilometers to miles
+        }
+
+        return distance; // Return the distance in miles if the unit is already in miles
     }
 
     getHTMLTableRow(rowNumber:number):string {
         //TODO: return a table row which summarizes the tweet with a clickable link to the RunKeeper activity
         return "<tr></tr>";
     }
+
+    // Helper to avoid repeating the cleaning logic
+    private getPersonalText(): string {
+
+        const separator = " - ";
+        const position = this.text.indexOf(separator);
+
+        if (position === -1) {
+            return "";
+        }
+
+        let comment = this.text.substring(position + separator.length);
+
+        comment = comment.split("\n").join(" ");
+        comment = comment.split("\r").join(" ");
+        comment = comment.split("\t").join(" ");
+
+        const words = comment.split(" ");
+        const personalWords:string[] = [];
+
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const lowercaseWord = word.trim().toLowerCase();
+
+            // Keep words that are not a link or the auto app hashtag
+            if (!lowercaseWord.startsWith("http://") && 
+                !lowercaseWord.startsWith("https://") &&
+                lowercaseWord !== "#runkeeper") {
+                    personalWords.push(word);
+                }
+            }
+
+            const personalText = personalWords.join(" ").trim();
+
+            if (personalText.toLowerCase() === "tomtom mysports watch") {
+                return "";
+            }
+
+            return personalText;
+        }
 }
