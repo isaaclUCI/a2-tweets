@@ -93,7 +93,54 @@ class Tweet {
 
     getHTMLTableRow(rowNumber:number):string {
         //TODO: return a table row which summarizes the tweet with a clickable link to the RunKeeper activity
-        return "<tr></tr>";
+        
+        // Create the row and its first cell: the result number
+        const row = document.createElement('tr');
+        const numberCell = document.createElement('td');
+        numberCell.textContent = String(rowNumber);
+        row.appendChild(numberCell);
+
+        // Create second cell: type of activity
+        const activityCell = document.createElement('td');
+        activityCell.textContent = this.activityType;
+        row.appendChild(activityCell);
+
+        // Create third cell: full tweet and links
+        const tweetCell = document.createElement('td');
+
+        // Turn line breaks and tabs into spaces
+        let tweetText = this.text;
+        tweetText = tweetText.split('\n').join(' ');
+        tweetText = tweetText.split('\r').join(' ');
+        tweetText = tweetText.split('\t').join(' ');
+        const words = tweetText.split(' ');
+
+        for (let i = 0; i < words.length; i++) {
+            // Put the spaces back between the words.
+            if (i > 0) {
+                tweetCell.appendChild(document.createTextNode(' '));
+            }
+
+            const word = words[i];
+            const lowercaseWord = word.toLocaleLowerCase();
+
+            if (lowercaseWord.startsWith('http://') || lowercaseWord.startsWith('https://')) {
+                // Create clickable link using URL in the tweet
+                const link = document.createElement('a');
+                link.href = word;
+                link.textContent = word;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                tweetCell.appendChild(link);
+            } else {
+                tweetCell.appendChild(document.createTextNode(word));
+            }
+        } 
+
+        row.appendChild(tweetCell);
+
+        // Return the complete HTML for this row
+        return row.outerHTML;
     }
 
     // Helper to avoid repeating the cleaning logic
